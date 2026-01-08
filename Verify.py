@@ -1,121 +1,199 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 
-# ---------- CONFIG ----------
+# Configurare pagină
 st.set_page_config(
     page_title="Verificare Loterie",
     page_icon="🎰",
     layout="wide"
 )
 
-# ---------- CACHE ----------
-@st.cache_data(show_spinner=False)
-def _parse_runde(text: str):
-    return [np.array([int(n.strip()) for n in lin.split(',') if n.strip()])
-            for lin in text.strip().splitlines() if lin.strip()]
+# Titlu principal
+st.title("🎰 Verificare Variante Loterie")
+st.divider()
+
+# ==============================
+# SPEED FUNCTIONS (ADĂUGATE)
+# ==============================
 
 @st.cache_data(show_spinner=False)
-def _parse_variante(text: str):
-    out = []
-    for lin in text.strip().splitlines():
-        if ',' not in lin: 
+def parse_runde_bulk(text):
+    runde = []
+    for linie in text.splitlines():
+        if not linie:
             continue
-        id_part, nums_part = lin.split(',', 1)
-        nums = np.array([int(n.strip()) for n in nums_part.split() if n.strip()])
-        if nums.size:
-            out.append({'id': id_part.strip(), 'numere': nums})
-    return out
+        nums = [int(n) for n in linie.split(',') if n.strip().isdigit()]
+        if nums:
+            runde.append(nums)
+    return runde
+
 
 @st.cache_data(show_spinner=False)
-def verifica_varianta(varianta, runda):
-    """Returnează numărul de numere comune (aceeași semnatură)"""
-    return len(np.intersect1d(varianta, runda, assume_unique=True))
+def parse_variante_bulk(text):
+    variante = []
+    for linie in text.splitlines():
+        if ',' not in linie:
+            continue
+        id_var, rest = linie.split(',', 1)
+        nums = [int(n) for n in rest.split() if n.strip().isdigit()]
+        if nums:
+            variante.append({
+                "id": id_var.strip(),
+                "numere": nums
+            })
+    return variante
 
-# ---------- SESSION ----------
+
+@st.cache_data(show_spinner=False)
+def precompute_sets(runde, variante):
+    runde_sets = [set(r) for r in runde]
+    variante_sets = [
+        {"id": v["id"], "set": set(v["numere"])}
+        for v in variante
+    ]
+    return runde_sets, variante_sets
+
+
+@st.cache_data(show_spinner=False)
+def calculeaza_rezultate(runde_sets, variante_sets, minim):
+    rezultate = []
+    total = 0
+
+    for i, runda_set in enumerate(runde_sets, 1):
+        castiguri = 0
+        for var in variante_sets:
+            if len(var["set"] & runda_set) >= minim:
+                castiguri += 1
+                total += 1
+        rezultate.append((i, castiguri))
+
+    return rezultate, total
+
+
+# ==============================
+# SESSION STATE
+# ==============================
+
 if 'runde' not in st.session_state:
     st.session_state.runde = []
 if 'variante' not in st.session_state:
     st.session_state.variante = []
 
-# ---------- UI (identic) ----------
-st.title("🎰 Verificare Variante Loterie")
-st.divider()
+# Funcție pentru comparare (PĂSTRATĂ)
+def verifica_varianta(varianta, runda):
+    set_varianta = set(varianta)
+    set_runda = set(runda)
+    return len(set_varianta.intersection(set_runda))
 
+# Layout în 2 coloane
 col1, col2 = st.columns(2)
 
+# ==============================
+# COLOANA 1: RUNDE
+# ==============================
 with col1:
     st.header("📋 Runde")
+
     text_runde = st.text_area(
         "Format: 1,6,7,9,44,77",
         height=150,
         placeholder="1,6,7,9,44,77\n2,5,3,77,6,56",
         key="input_runde_bulk"
     )
+
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button("Adaugă", type="primary", use_container_width=True):
             if text_runde.strip():
-                parsed = _parse_runde(text_runde)
-                if parsed:
-                    st.session_state.runde.extend(parsed)
-                    st.success(f"✅ {len(parsed)} runde")
+                runde_noi = parse_runde_bulk(text_runde)
+                if runde_noi:
+                    st.session_state.runde.extend(runde_noi)
+                    st.success(f"✅ {len(runde_noi)} runde")
                     st.rerun()
+
     with col_btn2:
         if st.button("Șterge", use_container_width=True):
             st.session_state.runde = []
             st.rerun()
+
     if st.session_state.runde:
         st.caption(f"Total: {len(st.session_state.runde)} runde")
-        with st.container(height=250):
-            for i, r in enumerate(st.session_state.runde, 1):
-                st.text(f"{i}. {','.join(map(str, r))}")
+        container_runde = st.container(height=250)
+        with container_runde:
+            for i, runda in enumerate(st.session_state.runde, 1):
+                st.text(f"{i}. {','.join(map(str, runda))}")
 
+# ==============================
+# COLOANA 2: VARIANTE
+# ==============================
 with col2:
     st.header("🎲 Variante")
+
     text_variante = st.text_area(
         "Format: 1, 6 7 5 77",
         height=150,
         placeholder="1, 6 7 5 77\n2, 4 65 45 23",
         key="input_variante_bulk"
     )
+
     col_btn3, col_btn4 = st.columns(2)
     with col_btn3:
         if st.button("Adaugă", type="primary", use_container_width=True, key="add_var"):
             if text_variante.strip():
-                parsed = _parse_variante(text_variante)
-                if parsed:
-                    st.session_state.variante.extend(parsed)
-                    st.success(f"✅ {len(parsed)} variante")
+                variante_noi = parse_variante_bulk(text_variante)
+                if variante_noi:
+                    st.session_state.variante.extend(variante_noi)
+                    st.success(f"✅ {len(variante_noi)} variante")
                     st.rerun()
+
     with col_btn4:
         if st.button("Șterge", use_container_width=True, key="del_var"):
             st.session_state.variante = []
             st.rerun()
+
     if st.session_state.variante:
         st.caption(f"Total: {len(st.session_state.variante)} variante")
-        with st.container(height=250):
-            for v in st.session_state.variante:
-                st.text(f"ID {v['id']}: {' '.join(map(str, v['numere']))}")
+        container_variante = st.container(height=250)
+        with container_variante:
+            for var in st.session_state.variante:
+                st.text(f"ID {var['id']}: {' '.join(map(str, var['numere']))}")
 
-# ---------- REZULTATE (identic) ----------
+# ==============================
+# REZULTATE
+# ==============================
 st.divider()
 st.header("🏆 Rezultate")
 
 if st.session_state.runde and st.session_state.variante:
-    numar_minim = st.slider("Numere minime potrivite:", min_value=2, max_value=10, value=4)
-    st.divider()
-    with st.container(height=300):
-        for i, r in enumerate(st.session_state.runde, 1):
-            castiguri = sum(verifica_varianta(v['numere'], r) >= numar_minim for v in st.session_state.variante)
+
+    numar_minim = st.slider(
+        "Numere minime potrivite:",
+        min_value=2,
+        max_value=10,
+        value=4
+    )
+
+    runde_sets, variante_sets = precompute_sets(
+        st.session_state.runde,
+        st.session_state.variante
+    )
+
+    rezultate, total_castiguri = calculeaza_rezultate(
+        runde_sets,
+        variante_sets,
+        numar_minim
+    )
+
+    rezultate_container = st.container(height=300)
+    with rezultate_container:
+        for i, castiguri in rezultate:
             st.text(f"Runda {i} - {castiguri} variante câștigătoare")
+
     st.divider()
-    total_castiguri = sum(verifica_varianta(v['numere'], r) >= numar_minim
-                          for r in st.session_state.runde
-                          for v in st.session_state.variante)
     col_s1, col_s2, col_s3 = st.columns(3)
     col_s1.metric("Runde", len(st.session_state.runde))
     col_s2.metric("Variante", len(st.session_state.variante))
     col_s3.metric("Câștiguri", total_castiguri)
+
 else:
     st.info("Adaugă runde și variante pentru verificare")
