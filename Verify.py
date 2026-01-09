@@ -190,10 +190,12 @@ if st.session_state.runde and st.session_state.variante:
             st.text(f"Runda {i} - {castiguri} variante câștigătoare")
 
     st.divider()
-    col_s1, col_s2, col_s3 = st.columns(3)
-    col_s1.metric("Runde", len(st.session_state.runde))
-    col_s2.metric("Variante", len(st.session_state.variante))
-    col_s3.metric("Câștiguri", total_castiguri)
+    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+
+col_s1.metric("Runde", len(st.session_state.runde))
+col_s2.metric("Variante", len(st.session_state.variante))
+col_s3.metric("Câștiguri", total_castiguri)
+col_s4.metric("Câștiguri unice", castiguri_unice)
 
 else:
     st.info("Adaugă runde și variante pentru verificare")
