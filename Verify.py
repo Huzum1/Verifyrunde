@@ -92,57 +92,85 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.header("📋 Runde")
+
     text_runde = st.text_area(
         "Format: 1,6,7,9,44,77",
         height=150,
+        placeholder="1,6,7,9,44,77\n2,5,3,77,6,56",
         key="input_runde_bulk"
     )
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Adaugă", type="primary", use_container_width=True):
-            r = parse_runde_bulk(text_runde)
-            if r:
-                st.session_state.runde.extend(r)
-                st.rerun()
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button(
+            "Adaugă",
+            type="primary",
+            use_container_width=True,
+            key="add_runde"
+        ):
+            if text_runde.strip():
+                runde_noi = parse_runde_bulk(text_runde)
+                if runde_noi:
+                    st.session_state.runde.extend(runde_noi)
+                    st.success(f"✅ {len(runde_noi)} runde")
+                    st.rerun()
 
-    with c2:
-        if st.button("Șterge", use_container_width=True):
+    with col_btn2:
+        if st.button(
+            "Șterge",
+            use_container_width=True,
+            key="del_runde"
+        ):
             st.session_state.runde = []
             st.rerun()
 
     if st.session_state.runde:
         st.caption(f"Total: {len(st.session_state.runde)} runde")
-        with st.container(height=250):
-            for i, r in enumerate(st.session_state.runde, 1):
-                st.text(f"{i}. {','.join(map(str, r))}")
+        container_runde = st.container(height=250)
+        with container_runde:
+            for i, runda in enumerate(st.session_state.runde, 1):
+                st.text(f"{i}. {','.join(map(str, runda))}")
 
 with col2:
     st.header("🎲 Variante")
+
     text_variante = st.text_area(
         "Format: 1, 6 7 5 77",
         height=150,
+        placeholder="1, 6 7 5 77\n2, 4 65 45 23",
         key="input_variante_bulk"
     )
 
-    c3, c4 = st.columns(2)
-    with c3:
-        if st.button("Adaugă", type="primary", use_container_width=True):
-            v = parse_variante_bulk(text_variante)
-            if v:
-                st.session_state.variante.extend(v)
-                st.rerun()
+    col_btn3, col_btn4 = st.columns(2)
+    with col_btn3:
+        if st.button(
+            "Adaugă",
+            type="primary",
+            use_container_width=True,
+            key="add_variante"
+        ):
+            if text_variante.strip():
+                variante_noi = parse_variante_bulk(text_variante)
+                if variante_noi:
+                    st.session_state.variante.extend(variante_noi)
+                    st.success(f"✅ {len(variante_noi)} variante")
+                    st.rerun()
 
-    with c4:
-        if st.button("Șterge", use_container_width=True):
+    with col_btn4:
+        if st.button(
+            "Șterge",
+            use_container_width=True,
+            key="del_variante"
+        ):
             st.session_state.variante = []
             st.rerun()
 
     if st.session_state.variante:
         st.caption(f"Total: {len(st.session_state.variante)} variante")
-        with st.container(height=250):
-            for v in st.session_state.variante:
-                st.text(f"ID {v['id']}: {' '.join(map(str, v['numere']))}")
+        container_variante = st.container(height=250)
+        with container_variante:
+            for var in st.session_state.variante:
+                st.text(f"ID {var['id']}: {' '.join(map(str, var['numere']))}")
 
 
 # ==============================
@@ -154,7 +182,13 @@ st.header("🏆 Rezultate")
 
 if st.session_state.runde and st.session_state.variante:
 
-    minim = st.slider("Numere minime potrivite:", 2, 10, 4)
+    numar_minim = st.slider(
+        "Numere minime potrivite:",
+        min_value=2,
+        max_value=10,
+        value=4,
+        key="slider_minim"
+    )
 
     runde_sets, variante_sets = precompute_sets(
         st.session_state.runde,
@@ -162,40 +196,37 @@ if st.session_state.runde and st.session_state.variante:
     )
 
     rezultate, total_castiguri = calculeaza_rezultate(
-        runde_sets, variante_sets, minim
+        runde_sets,
+        variante_sets,
+        numar_minim
     )
 
     winning_ids = set()
-    for runda in runde_sets:
+    for runda_set in runde_sets:
         for v in variante_sets:
-            if len(v["set"] & runda) >= minim:
+            if len(v["set"] & runda_set) >= numar_minim:
                 winning_ids.add(v["id"])
 
     winning_variants = [
         f"{v['id']}, {' '.join(map(str, v['numere']))}"
-        for v in st.session_state.variante if v["id"] in winning_ids
+        for v in st.session_state.variante
+        if v["id"] in winning_ids
     ]
 
     losing_variants = [
         f"{v['id']}, {' '.join(map(str, v['numere']))}"
-        for v in st.session_state.variante if v["id"] not in winning_ids
+        for v in st.session_state.variante
+        if v["id"] not in winning_ids
     ]
 
     winning_variants_unique = sorted(set(winning_variants))
     losing_variants_unique = sorted(set(losing_variants))
 
-    winning_runde = [
-        r for r, c in rezultate if c > 0
-    ]
-    losing_runde = [
-        r for r, c in rezultate if c == 0
-    ]
+    winning_runde = [str(i) for i, c in rezultate if c > 0]
+    losing_runde = [str(i) for i, c in rezultate if c == 0]
 
-    winning_runde_lines = [str(r) for r in winning_runde]
-    losing_runde_lines = [str(r) for r in losing_runde]
-
-    winning_runde_unique = sorted(set(winning_runde_lines))
-    losing_runde_unique = sorted(set(losing_runde_lines))
+    winning_runde_unique = sorted(set(winning_runde))
+    losing_runde_unique = sorted(set(losing_runde))
 
     # ================== DESCĂRCARE ==================
     st.divider()
@@ -208,49 +239,65 @@ if st.session_state.runde and st.session_state.variante:
             st.download_button(
                 "Variante câștigătoare",
                 "\n".join(winning_variants),
-                "variante_castigatoare.txt"
+                file_name="variante_castigatoare.txt",
+                mime="text/plain",
+                key="dl_win_var"
             )
             st.download_button(
                 "Variante câștigătoare (unice)",
                 "\n".join(winning_variants_unique),
-                "variante_castigatoare_unice.txt"
+                file_name="variante_castigatoare_unice.txt",
+                mime="text/plain",
+                key="dl_win_var_u"
             )
 
         if losing_variants:
             st.download_button(
                 "Variante necâștigătoare",
                 "\n".join(losing_variants),
-                "variante_necastigatoare.txt"
+                file_name="variante_necastigatoare.txt",
+                mime="text/plain",
+                key="dl_lose_var"
             )
             st.download_button(
                 "Variante necâștigătoare (unice)",
                 "\n".join(losing_variants_unique),
-                "variante_necastigatoare_unice.txt"
+                file_name="variante_necastigatoare_unice.txt",
+                mime="text/plain",
+                key="dl_lose_var_u"
             )
 
     with col_d2:
-        if winning_runde_lines:
+        if winning_runde:
             st.download_button(
                 "Runde câștigătoare",
-                "\n".join(winning_runde_lines),
-                "runde_castigatoare.txt"
+                "\n".join(winning_runde),
+                file_name="runde_castigatoare.txt",
+                mime="text/plain",
+                key="dl_win_run"
             )
             st.download_button(
                 "Runde câștigătoare (unice)",
                 "\n".join(winning_runde_unique),
-                "runde_castigatoare_unice.txt"
+                file_name="runde_castigatoare_unice.txt",
+                mime="text/plain",
+                key="dl_win_run_u"
             )
 
-        if losing_runde_lines:
+        if losing_runde:
             st.download_button(
                 "Runde necâștigătoare",
-                "\n".join(losing_runde_lines),
-                "runde_necastigatoare.txt"
+                "\n".join(losing_runde),
+                file_name="runde_necastigatoare.txt",
+                mime="text/plain",
+                key="dl_lose_run"
             )
             st.download_button(
                 "Runde necâștigătoare (unice)",
                 "\n".join(losing_runde_unique),
-                "runde_necastigatoare_unice.txt"
+                file_name="runde_necastigatoare_unice.txt",
+                mime="text/plain",
+                key="dl_lose_run_u"
             )
 
 else:
