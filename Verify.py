@@ -8,7 +8,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Titlu principal
 st.title("🎰 Verificare Variante Loterie")
 st.divider()
 
@@ -37,20 +36,14 @@ def parse_variante_bulk(text):
         id_var, rest = linie.split(',', 1)
         nums = [int(n) for n in rest.split() if n.strip().isdigit()]
         if nums:
-            variante.append({
-                "id": id_var.strip(),
-                "numere": nums
-            })
+            variante.append({"id": id_var.strip(), "numere": nums})
     return variante
 
 
 @st.cache_data(show_spinner=False)
 def precompute_sets(runde, variante):
     runde_sets = [set(r) for r in runde]
-    variante_sets = [
-        {"id": v["id"], "set": set(v["numere"])}
-        for v in variante
-    ]
+    variante_sets = [{"id": v["id"], "set": set(v["numere"])} for v in variante]
     return runde_sets, variante_sets
 
 
@@ -80,10 +73,6 @@ if 'variante' not in st.session_state:
     st.session_state.variante = []
 
 
-def verifica_varianta(varianta, runda):
-    return len(set(varianta) & set(runda))
-
-
 # ==============================
 # INPUT
 # ==============================
@@ -96,40 +85,21 @@ with col1:
     text_runde = st.text_area(
         "Format: 1,6,7,9,44,77",
         height=150,
-        placeholder="1,6,7,9,44,77\n2,5,3,77,6,56",
         key="input_runde_bulk"
     )
 
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button(
-            "Adaugă",
-            type="primary",
-            use_container_width=True,
-            key="add_runde"
-        ):
-            if text_runde.strip():
-                runde_noi = parse_runde_bulk(text_runde)
-                if runde_noi:
-                    st.session_state.runde.extend(runde_noi)
-                    st.success(f"✅ {len(runde_noi)} runde")
-                    st.rerun()
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Adaugă", type="primary", use_container_width=True, key="add_runde"):
+            r = parse_runde_bulk(text_runde)
+            if r:
+                st.session_state.runde.extend(r)
+                st.rerun()
 
-    with col_btn2:
-        if st.button(
-            "Șterge",
-            use_container_width=True,
-            key="del_runde"
-        ):
+    with c2:
+        if st.button("Șterge", use_container_width=True, key="del_runde"):
             st.session_state.runde = []
             st.rerun()
-
-    if st.session_state.runde:
-        st.caption(f"Total: {len(st.session_state.runde)} runde")
-        container_runde = st.container(height=250)
-        with container_runde:
-            for i, runda in enumerate(st.session_state.runde, 1):
-                st.text(f"{i}. {','.join(map(str, runda))}")
 
 with col2:
     st.header("🎲 Variante")
@@ -137,40 +107,21 @@ with col2:
     text_variante = st.text_area(
         "Format: 1, 6 7 5 77",
         height=150,
-        placeholder="1, 6 7 5 77\n2, 4 65 45 23",
         key="input_variante_bulk"
     )
 
-    col_btn3, col_btn4 = st.columns(2)
-    with col_btn3:
-        if st.button(
-            "Adaugă",
-            type="primary",
-            use_container_width=True,
-            key="add_variante"
-        ):
-            if text_variante.strip():
-                variante_noi = parse_variante_bulk(text_variante)
-                if variante_noi:
-                    st.session_state.variante.extend(variante_noi)
-                    st.success(f"✅ {len(variante_noi)} variante")
-                    st.rerun()
+    c3, c4 = st.columns(2)
+    with c3:
+        if st.button("Adaugă", type="primary", use_container_width=True, key="add_var"):
+            v = parse_variante_bulk(text_variante)
+            if v:
+                st.session_state.variante.extend(v)
+                st.rerun()
 
-    with col_btn4:
-        if st.button(
-            "Șterge",
-            use_container_width=True,
-            key="del_variante"
-        ):
+    with c4:
+        if st.button("Șterge", use_container_width=True, key="del_var"):
             st.session_state.variante = []
             st.rerun()
-
-    if st.session_state.variante:
-        st.caption(f"Total: {len(st.session_state.variante)} variante")
-        container_variante = st.container(height=250)
-        with container_variante:
-            for var in st.session_state.variante:
-                st.text(f"ID {var['id']}: {' '.join(map(str, var['numere']))}")
 
 
 # ==============================
@@ -182,13 +133,7 @@ st.header("🏆 Rezultate")
 
 if st.session_state.runde and st.session_state.variante:
 
-    numar_minim = st.slider(
-        "Numere minime potrivite:",
-        min_value=2,
-        max_value=10,
-        value=4,
-        key="slider_minim"
-    )
+    minim = st.slider("Numere minime potrivite:", 2, 10, 4)
 
     runde_sets, variante_sets = precompute_sets(
         st.session_state.runde,
@@ -196,37 +141,50 @@ if st.session_state.runde and st.session_state.variante:
     )
 
     rezultate, total_castiguri = calculeaza_rezultate(
-        runde_sets,
-        variante_sets,
-        numar_minim
+        runde_sets, variante_sets, minim
     )
 
-    winning_ids = set()
+    # ==============================
+    # LOGICĂ CORECTĂ PENTRU UNICE
+    # ==============================
+
+    castiguri_per_varianta = {v["id"]: 0 for v in st.session_state.variante}
+
     for runda_set in runde_sets:
         for v in variante_sets:
-            if len(v["set"] & runda_set) >= numar_minim:
-                winning_ids.add(v["id"])
+            if len(v["set"] & runda_set) >= minim:
+                castiguri_per_varianta[v["id"]] += 1
 
-    winning_variants = [
+    variante_castigatoare = [
         f"{v['id']}, {' '.join(map(str, v['numere']))}"
         for v in st.session_state.variante
-        if v["id"] in winning_ids
+        if castiguri_per_varianta[v["id"]] > 0
     ]
 
-    losing_variants = [
+    variante_castigatoare_unice = [
         f"{v['id']}, {' '.join(map(str, v['numere']))}"
         for v in st.session_state.variante
-        if v["id"] not in winning_ids
+        if castiguri_per_varianta[v["id"]] == 1
     ]
 
-    winning_variants_unique = sorted(set(winning_variants))
-    losing_variants_unique = sorted(set(losing_variants))
+    variante_necastigatoare = [
+        f"{v['id']}, {' '.join(map(str, v['numere']))}"
+        for v in st.session_state.variante
+        if castiguri_per_varianta[v["id"]] == 0
+    ]
 
-    winning_runde = [str(i) for i, c in rezultate if c > 0]
-    losing_runde = [str(i) for i, c in rezultate if c == 0]
+    # ==============================
+    # STATISTICI (PĂSTRATE)
+    # ==============================
 
-    winning_runde_unique = sorted(set(winning_runde))
-    losing_runde_unique = sorted(set(losing_runde))
+    castiguri_unice = sum(1 for v in castiguri_per_varianta.values() if v == 1)
+
+    st.divider()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Runde", len(st.session_state.runde))
+    c2.metric("Variante", len(st.session_state.variante))
+    c3.metric("Câștiguri totale", total_castiguri)
+    c4.metric("Variante cu 1 câștig", castiguri_unice)
 
     # ================== DESCĂRCARE ==================
     st.divider()
@@ -235,69 +193,25 @@ if st.session_state.runde and st.session_state.variante:
     col_d1, col_d2 = st.columns(2)
 
     with col_d1:
-        if winning_variants:
+        if variante_castigatoare:
             st.download_button(
                 "Variante câștigătoare",
-                "\n".join(winning_variants),
-                file_name="variante_castigatoare.txt",
-                mime="text/plain",
-                key="dl_win_var"
-            )
-            st.download_button(
-                "Variante câștigătoare (unice)",
-                "\n".join(winning_variants_unique),
-                file_name="variante_castigatoare_unice.txt",
-                mime="text/plain",
-                key="dl_win_var_u"
+                "\n".join(variante_castigatoare),
+                "variante_castigatoare.txt"
             )
 
-        if losing_variants:
+        if variante_castigatoare_unice:
+            st.download_button(
+                "Variante câștigătoare UNICE",
+                "\n".join(variante_castigatoare_unice),
+                "variante_castigatoare_unice.txt"
+            )
+
+        if variante_necastigatoare:
             st.download_button(
                 "Variante necâștigătoare",
-                "\n".join(losing_variants),
-                file_name="variante_necastigatoare.txt",
-                mime="text/plain",
-                key="dl_lose_var"
-            )
-            st.download_button(
-                "Variante necâștigătoare (unice)",
-                "\n".join(losing_variants_unique),
-                file_name="variante_necastigatoare_unice.txt",
-                mime="text/plain",
-                key="dl_lose_var_u"
-            )
-
-    with col_d2:
-        if winning_runde:
-            st.download_button(
-                "Runde câștigătoare",
-                "\n".join(winning_runde),
-                file_name="runde_castigatoare.txt",
-                mime="text/plain",
-                key="dl_win_run"
-            )
-            st.download_button(
-                "Runde câștigătoare (unice)",
-                "\n".join(winning_runde_unique),
-                file_name="runde_castigatoare_unice.txt",
-                mime="text/plain",
-                key="dl_win_run_u"
-            )
-
-        if losing_runde:
-            st.download_button(
-                "Runde necâștigătoare",
-                "\n".join(losing_runde),
-                file_name="runde_necastigatoare.txt",
-                mime="text/plain",
-                key="dl_lose_run"
-            )
-            st.download_button(
-                "Runde necâștigătoare (unice)",
-                "\n".join(losing_runde_unique),
-                file_name="runde_necastigatoare_unice.txt",
-                mime="text/plain",
-                key="dl_lose_run_u"
+                "\n".join(variante_necastigatoare),
+                "variante_necastigatoare.txt"
             )
 
 else:
