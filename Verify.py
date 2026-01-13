@@ -201,7 +201,7 @@ if st.session_state.runde and st.session_state.variante:
     col_s4.metric("Câștiguri unice", castiguri_unice)
 
     # ==============================
-    # DESCĂRCARE REZULTATE + VAR. UNICE
+    # DESCĂRCARE REZULTATE + CÂȘTIGURI UNICE
     # ==============================
     st.divider()
     st.caption("⬇️ Descărcare rezultate")
@@ -232,14 +232,12 @@ if st.session_state.runde and st.session_state.variante:
         if v["id"] not in winning_ids
     ]
 
-    # extragem variante unice (fără duplicate)
-    variante_unice_lines = []
-    seen = set()
-    for v in st.session_state.variante:
-        key = tuple(sorted(v["numere"]))
-        if key not in seen:
-            seen.add(key)
-            variante_unice_lines.append(f"{v['id']}, {' '.join(map(str, v['numere']))}")
+    # listă cu rundele-care-au-produs-cel-puțin-o-variantă-câștigătoare (UNICE)
+    castiguri_unice_lines = [
+        ",".join(map(str, st.session_state.runde[idx - 1]))
+        for idx, (_, c) in enumerate(rezultate, 1)
+        if c > 0
+    ]
 
     col_d1, col_d2 = st.columns(2)
 
@@ -260,14 +258,6 @@ if st.session_state.runde and st.session_state.variante:
                 mime="text/plain"
             )
 
-        if variante_unice_lines:
-            st.download_button(
-                "Variante unice (fără duplicate)",
-                "\n".join(variante_unice_lines),
-                file_name="variante_unice.txt",
-                mime="text/plain"
-            )
-
     with col_d2:
         if winning_runde:
             winning_runde_lines = [",".join(map(str, r)) for r in winning_runde]
@@ -284,6 +274,14 @@ if st.session_state.runde and st.session_state.variante:
                 "Runde necâștigătoare",
                 "\n".join(losing_runde_lines),
                 file_name="runde_necastigatoare.txt",
+                mime="text/plain"
+            )
+
+        if castiguri_unice_lines:
+            st.download_button(
+                "Câștiguri unice",
+                "\n".join(castiguri_unice_lines),
+                file_name="castiguri_unice.txt",
                 mime="text/plain"
             )
 
