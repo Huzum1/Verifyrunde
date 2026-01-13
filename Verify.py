@@ -201,7 +201,7 @@ if st.session_state.runde and st.session_state.variante:
     col_s4.metric("Câștiguri unice", castiguri_unice)
 
     # ==============================
-    # DESCĂRCARE REZULTATE + CÂȘTIGURI UNICE
+    # DESCĂRCARE REZULTATE + VARIANTE CÂȘTIGĂTOARE UNICE
     # ==============================
     st.divider()
     st.caption("⬇️ Descărcare rezultate")
@@ -232,12 +232,15 @@ if st.session_state.runde and st.session_state.variante:
         if v["id"] not in winning_ids
     ]
 
-    # listă cu rundele-care-au-produs-cel-puțin-o-variantă-câștigătoare (UNICE)
-    castiguri_unice_lines = [
-        ",".join(map(str, st.session_state.runde[idx - 1]))
-        for idx, (_, c) in enumerate(rezultate, 1)
-        if c > 0
-    ]
+    # variante câștigătoare fără duplicate după numere
+    seen = set()
+    winning_unique_lines = []
+    for v in st.session_state.variante:
+        if v["id"] in winning_ids:
+            key = tuple(sorted(v["numere"]))
+            if key not in seen:
+                seen.add(key)
+                winning_unique_lines.append(f"{v['id']}, {' '.join(map(str, v['numere']))}")
 
     col_d1, col_d2 = st.columns(2)
 
@@ -247,6 +250,14 @@ if st.session_state.runde and st.session_state.variante:
                 "Variante câștigătoare",
                 "\n".join(winning_variants),
                 file_name="variante_castigatoare.txt",
+                mime="text/plain"
+            )
+
+        if winning_unique_lines:
+            st.download_button(
+                "Variante câștigătoare unice",
+                "\n".join(winning_unique_lines),
+                file_name="variante_castigatoare_unice.txt",
                 mime="text/plain"
             )
 
@@ -274,14 +285,6 @@ if st.session_state.runde and st.session_state.variante:
                 "Runde necâștigătoare",
                 "\n".join(losing_runde_lines),
                 file_name="runde_necastigatoare.txt",
-                mime="text/plain"
-            )
-
-        if castiguri_unice_lines:
-            st.download_button(
-                "Câștiguri unice",
-                "\n".join(castiguri_unice_lines),
-                file_name="castiguri_unice.txt",
                 mime="text/plain"
             )
 
