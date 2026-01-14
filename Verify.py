@@ -13,7 +13,7 @@ st.title("🎰 Verificare Variante Loterie")
 st.divider()
 
 # ==============================
-# SPEED FUNCTIONS (ADĂUGATE)
+# SPEED FUNCTIONS
 # ==============================
 
 @st.cache_data(show_spinner=False)
@@ -79,17 +79,17 @@ if 'runde' not in st.session_state:
 if 'variante' not in st.session_state:
     st.session_state.variante = []
 
-# Funcție pentru comparare (PĂSTRATĂ)
 def verifica_varianta(varianta, runda):
-    set_varianta = set(varianta)
-    set_runda = set(runda)
-    return len(set_varianta.intersection(set_runda))
+    return len(set(varianta).intersection(set(runda)))
 
-# Layout în 2 coloane
+# ==============================
+# LAYOUT
+# ==============================
+
 col1, col2 = st.columns(2)
 
 # ==============================
-# COLOANA 1: RUNDE
+# RUNDE
 # ==============================
 with col1:
     st.header("📋 Runde")
@@ -124,7 +124,7 @@ with col1:
                 st.text(f"{i}. {','.join(map(str, runda))}")
 
 # ==============================
-# COLOANA 2: VARIANTE
+# VARIANTE
 # ==============================
 with col2:
     st.header("🎲 Variante")
@@ -138,7 +138,7 @@ with col2:
 
     col_btn3, col_btn4 = st.columns(2)
     with col_btn3:
-        if st.button("Adaugă", type="primary", use_container_width=True, key="add_var"):
+        if st.button("Adaugă", type="primary", use_container_width=True):
             if text_variante.strip():
                 variante_noi = parse_variante_bulk(text_variante)
                 if variante_noi:
@@ -147,7 +147,7 @@ with col2:
                     st.rerun()
 
     with col_btn4:
-        if st.button("Șterge", use_container_width=True, key="del_var"):
+        if st.button("Șterge", use_container_width=True):
             st.session_state.variante = []
             st.rerun()
 
@@ -184,8 +184,7 @@ if st.session_state.runde and st.session_state.variante:
         numar_minim
     )
 
-    # 🔹 ADAUGAT: castiguri unice
-    castiguri_unice = sum(1 for _, castiguri in rezultate if castiguri > 0)
+    castiguri_unice = sum(1 for _, c in rezultate if c > 0)
 
     rezultate_container = st.container(height=300)
     with rezultate_container:
@@ -195,10 +194,43 @@ if st.session_state.runde and st.session_state.variante:
     st.divider()
     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
+    # ==============================
+    # METRICS + DOWNLOADS
+    # ==============================
+
     col_s1.metric("Runde", len(st.session_state.runde))
+    col_s1.download_button(
+        "⬇️ Download",
+        data="\n".join(",".join(map(str, r)) for r in st.session_state.runde),
+        file_name="runde.txt"
+    )
+
     col_s2.metric("Variante", len(st.session_state.variante))
+    col_s2.download_button(
+        "⬇️ Download",
+        data="\n".join(
+            f"{v['id']}, {' '.join(map(str, v['numere']))}"
+            for v in st.session_state.variante
+        ),
+        file_name="variante.txt"
+    )
+
     col_s3.metric("Câștiguri", total_castiguri)
+    col_s3.download_button(
+        "⬇️ Download",
+        data="\n".join(f"Runda {i}: {c}" for i, c in rezultate),
+        file_name="castiguri_totale.txt"
+    )
+
     col_s4.metric("Câștiguri unice", castiguri_unice)
+    col_s4.download_button(
+        "⬇️ Download",
+        data=(
+            "\n".join(f"Runda {i}" for i, c in rezultate if c > 0)
+            + f"\n\nTotal runde câștigătoare: {castiguri_unice}"
+        ),
+        file_name="castiguri_unice.txt"
+    )
 
 else:
     st.info("Adaugă runde și variante pentru verificare")
