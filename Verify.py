@@ -103,7 +103,12 @@ with col1:
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("Adaugă", type="primary", use_container_width=True):
+        if st.button(
+            "Adaugă",
+            type="primary",
+            use_container_width=True,
+            key="add_runde"
+        ):
             if text_runde.strip():
                 runde_noi = parse_runde_bulk(text_runde)
                 if runde_noi:
@@ -112,7 +117,11 @@ with col1:
                     st.rerun()
 
     with col_btn2:
-        if st.button("Șterge", use_container_width=True):
+        if st.button(
+            "Șterge",
+            use_container_width=True,
+            key="del_runde"
+        ):
             st.session_state.runde = []
             st.rerun()
 
@@ -138,7 +147,12 @@ with col2:
 
     col_btn3, col_btn4 = st.columns(2)
     with col_btn3:
-        if st.button("Adaugă", type="primary", use_container_width=True):
+        if st.button(
+            "Adaugă",
+            type="primary",
+            use_container_width=True,
+            key="add_variante"
+        ):
             if text_variante.strip():
                 variante_noi = parse_variante_bulk(text_variante)
                 if variante_noi:
@@ -147,7 +161,11 @@ with col2:
                     st.rerun()
 
     with col_btn4:
-        if st.button("Șterge", use_container_width=True):
+        if st.button(
+            "Șterge",
+            use_container_width=True,
+            key="del_variante"
+        ):
             st.session_state.variante = []
             st.rerun()
 
@@ -170,7 +188,8 @@ if st.session_state.runde and st.session_state.variante:
         "Numere minime potrivite:",
         min_value=2,
         max_value=10,
-        value=4
+        value=4,
+        key="slider_minim"
     )
 
     runde_sets, variante_sets = precompute_sets(
@@ -194,15 +213,12 @@ if st.session_state.runde and st.session_state.variante:
     st.divider()
     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
-    # ==============================
-    # METRICS + DOWNLOADS
-    # ==============================
-
     col_s1.metric("Runde", len(st.session_state.runde))
     col_s1.download_button(
         "⬇️ Download",
         data="\n".join(",".join(map(str, r)) for r in st.session_state.runde),
-        file_name="runde.txt"
+        file_name="runde.txt",
+        key="dl_runde"
     )
 
     col_s2.metric("Variante", len(st.session_state.variante))
@@ -212,14 +228,16 @@ if st.session_state.runde and st.session_state.variante:
             f"{v['id']}, {' '.join(map(str, v['numere']))}"
             for v in st.session_state.variante
         ),
-        file_name="variante.txt"
+        file_name="variante.txt",
+        key="dl_variante"
     )
 
     col_s3.metric("Câștiguri", total_castiguri)
     col_s3.download_button(
         "⬇️ Download",
         data="\n".join(f"Runda {i}: {c}" for i, c in rezultate),
-        file_name="castiguri_totale.txt"
+        file_name="castiguri_totale.txt",
+        key="dl_castiguri"
     )
 
     col_s4.metric("Câștiguri unice", castiguri_unice)
@@ -229,7 +247,8 @@ if st.session_state.runde and st.session_state.variante:
             "\n".join(f"Runda {i}" for i, c in rezultate if c > 0)
             + f"\n\nTotal runde câștigătoare: {castiguri_unice}"
         ),
-        file_name="castiguri_unice.txt"
+        file_name="castiguri_unice.txt",
+        key="dl_castiguri_unice"
     )
 
 else:
