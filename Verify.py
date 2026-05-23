@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 
 # ==============================
 # CONFIGURARE PAGINĂ
@@ -24,7 +25,7 @@ def parse_runde_bulk(text):
         nums = [int(n) for n in linie.split(",") if n.strip().isdigit()]
         if nums:
             runde.append(nums)
-    return runde
+    return runda
 
 
 @st.cache_data(show_spinner=False)
@@ -108,8 +109,9 @@ if st.session_state.runde and st.session_state.variante:
         key="slider_minim"
     )
 
-    castiguri_totale = []   # toate variantele câștigătoare
-    castiguri_unice = []    # max 1 per rundă
+    castiguri_totale = []    # toate variantele câștigătoare
+    castiguri_unice = []     # max 1 per rundă
+    runde_fara_hit = []      # listă cu rundele care nu au generat niciun câștig
 
     for runda in st.session_state.runde:
         rset = set(runda)
@@ -122,9 +124,13 @@ if st.session_state.runde and st.session_state.variante:
                 if not castig_runda:
                     castiguri_unice.append(v)
                     castig_runda = True
+        
+        # Dacă bucla de variante s-a terminat și castig_runda a rămas False, înseamnă că e o rundă fără hit
+        if not castig_runda:
+            runde_fara_hit.append(runda)
 
     # ==============================
-    # AFIȘARE PE RUNDE (nemodificat)
+    # AFIȘARE PE RUNDE
     # ==============================
 
     with st.container(height=300):
@@ -136,10 +142,10 @@ if st.session_state.runde and st.session_state.variante:
             st.text(f"Runda {i} - {cnt} variante câștigătoare")
 
     # ==============================
-    # METRICS + DOWNLOAD
+    # METRICS + DOWNLOAD (Acum pe 5 coloane)
     # ==============================
 
-    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+    col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
 
     col_s1.metric("Runde", len(st.session_state.runde))
     col_s1.download_button(
@@ -180,6 +186,15 @@ if st.session_state.runde and st.session_state.variante:
         ),
         "castiguri_unice.txt",
         key="dl_castiguri_unice"
+    )
+
+    # NOUA COLOANĂ: Pentru rundele unde variantele tale NU au dat niciun hit
+    col_s5.metric("Runde fără hit", len(runde_fara_hit))
+    col_s5.download_button(
+        "⬇️ Download",
+        "\n".join(",".join(map(str, r)) for r in runde_fara_hit),
+        "runde_fara_hit.txt",
+        key="dl_runde_fara_hit"
     )
 
 else:
