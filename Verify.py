@@ -1,5 +1,4 @@
 import streamlit as st
-import re
 
 # ==============================
 # CONFIGURARE PAGINĂ
@@ -15,7 +14,7 @@ st.title("🎰 Verificare Variante Loterie")
 st.divider()
 
 # ==============================
-# FUNCȚII
+# FUNCȚII (CORECTATE)
 # ==============================
 
 @st.cache_data(show_spinner=False)
@@ -25,7 +24,7 @@ def parse_runde_bulk(text):
         nums = [int(n) for n in linie.split(",") if n.strip().isdigit()]
         if nums:
             runde.append(nums)
-    return runda
+    return runde  # Fixat: returna greșit "runda"
 
 
 @st.cache_data(show_spinner=False)
@@ -111,7 +110,7 @@ if st.session_state.runde and st.session_state.variante:
 
     castiguri_totale = []    # toate variantele câștigătoare
     castiguri_unice = []     # max 1 per rundă
-    runde_fara_hit = []      # listă cu rundele care nu au generat niciun câștig
+    runde_fara_hit = []      # listă cu rundele ghinioniste (0 hit)
 
     for runda in st.session_state.runde:
         rset = set(runda)
@@ -125,7 +124,7 @@ if st.session_state.runde and st.session_state.variante:
                     castiguri_unice.append(v)
                     castig_runda = True
         
-        # Dacă bucla de variante s-a terminat și castig_runda a rămas False, înseamnă că e o rundă fără hit
+        # Dacă bucla s-a terminat și runda nu are nicio variantă câștigătoare
         if not castig_runda:
             runde_fara_hit.append(runda)
 
@@ -142,7 +141,7 @@ if st.session_state.runde and st.session_state.variante:
             st.text(f"Runda {i} - {cnt} variante câștigătoare")
 
     # ==============================
-    # METRICS + DOWNLOAD (Acum pe 5 coloane)
+    # METRICS + DOWNLOAD (5 COLOANE)
     # ==============================
 
     col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
@@ -188,7 +187,7 @@ if st.session_state.runde and st.session_state.variante:
         key="dl_castiguri_unice"
     )
 
-    # NOUA COLOANĂ: Pentru rundele unde variantele tale NU au dat niciun hit
+    # Coloana 5: Descarcă rundele unde nu s-a înregistrat niciun câștig conform slider-ului
     col_s5.metric("Runde fără hit", len(runde_fara_hit))
     col_s5.download_button(
         "⬇️ Download",
