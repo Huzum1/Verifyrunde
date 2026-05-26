@@ -14,7 +14,7 @@ st.title("🎰 Verificare Variante Loterie")
 st.divider()
 
 # ==============================
-# FUNCȚII (CORECTATE)
+# FUNCȚII (CORECTATE & RAPIDE)
 # ==============================
 
 @st.cache_data(show_spinner=False)
@@ -24,7 +24,7 @@ def parse_runde_bulk(text):
         nums = [int(n) for n in linie.split(",") if n.strip().isdigit()]
         if nums:
             runde.append(nums)
-    return runde  # Fixat: returna greșit "runda"
+    return runde
 
 
 @st.cache_data(show_spinner=False)
@@ -111,34 +111,56 @@ if st.session_state.runde and st.session_state.variante:
     castiguri_totale = []    # toate variantele câștigătoare
     castiguri_unice = []     # max 1 per rundă
     runde_fara_hit = []      # listă cu rundele ghinioniste (0 hit)
+    
+    # Elemente pentru afișarea rapidă din chenar și descărcare
+    linii_chenar = []
 
-    for runda in st.session_state.runde:
+    # OPTIMIZARE VITEZĂ: Convertim numerele variantelor în seturi O SINGURĂ DATĂ în memorie
+    variante_seturi = [{"id": v["id"], "numere": v["numere"], "set": set(v["numere"])} for v in st.session_state.variante]
+
+    for i, runda in enumerate(st.session_state.runde, 1):
         rset = set(runda)
         castig_runda = False
+        cnt_variante_runda = 0  # Contor pentru afișarea directă în chenar
 
-        for v in st.session_state.variante:
-            if len(set(v["numere"]) & rset) >= minim:
-                castiguri_totale.append(v)
+        for v in variante_seturi:
+            # INTERSECȚIE ULTRA-RAPIDĂ DE SETURI
+            if len(v["set"] & rset) >= minim:
+                cnt_variante_runda += 1
+                castiguri_totale.append({"id": v["id"], "numere": v["numere"]})
 
                 if not castig_runda:
-                    castiguri_unice.append(v)
+                    castiguri_unice.append({"id": v["id"], "numere": v["numere"]})
                     castig_runda = True
         
-        # Dacă bucla s-a terminat și runda nu are nicio variantă câștigătoare
+        # Salvăm linia text exact așa cum apare în chenar pentru funcția de download solicitată
+        linii_chenar.append(f"Runda {i} - {cnt_variante_runda} variante câștigătoare")
+        
         if not castig_runda:
             runde_fara_hit.append(runda)
 
     # ==============================
-    # AFIȘARE PE RUNDE
+    # AFIȘARE PE RUNDE (CHENAR) + BUTON DOWNLOAD CHENAR
     # ==============================
+    
+    col_chenar_titlu, col_chenar_btn = st.columns([3, 1])
+    with col_chenar_titlu:
+        st.subheader("📋 Situație per Rundă")
+    with col_chenar_btn:
+        # COMANDA NOUĂ DE DOWNLOAD PENTRU TEXTUL DIN CHENAR (rundeWIN)
+        st.download_button(
+            "📥 Download rundeWIN",
+            "\n".join(linii_chenar),
+            "rundeWIN.txt",
+            key="dl_runde_win",
+            use_container_width=True
+        )
 
     with st.container(height=300):
-        for i, runda in enumerate(st.session_state.runde, 1):
-            cnt = sum(
-                1 for v in st.session_state.variante
-                if len(set(v["numere"]) & set(runda)) >= minim
-            )
-            st.text(f"Runda {i} - {cnt} variante câștigătoare")
+        for linie in linii_chenar:
+            st.text(linie)
+
+    st.write("") # Spațiere vizuală
 
     # ==============================
     # METRICS + DOWNLOAD (5 COLOANE)
@@ -187,7 +209,6 @@ if st.session_state.runde and st.session_state.variante:
         key="dl_castiguri_unice"
     )
 
-    # Coloana 5: Descarcă rundele unde nu s-a înregistrat niciun câștig conform slider-ului
     col_s5.metric("Runde fără hit", len(runde_fara_hit))
     col_s5.download_button(
         "⬇️ Download",
