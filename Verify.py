@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🎰 Verificare Variante Loterie")
+st.title("🎰 Verificare Variante Loterie (Win-uri Reale)")
 st.divider()
 
 # ==============================
@@ -96,19 +96,14 @@ with col2:
 # ==============================
 
 st.divider()
-st.header("🏆 Rezultate")
+st.header("🏆 Rezultate Exclusive (Fără Dubluri)")
 
 if st.session_state.runde and st.session_state.variante:
 
-    minim = st.slider(
-        "Numere minime potrivite:",
-        min_value=2,
-        max_value=10,
-        value=4,
-        key="slider_minim"
-    )
-
-    castiguri_totale = []    # toate variantele câștigătoare
+    # Pregătim dicționarele pentru a număra win-urile REALE/FIXE pentru Metrics
+    statistica_reala = {2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0}
+    
+    castiguri_totale = []    # toate variantele câștigătoare unice pe categoria lor maximă
     castiguri_unice = []     # max 1 per rundă
     runde_fara_hit = []      # listă cu rundele ghinioniste (0 hit)
     
@@ -124,20 +119,42 @@ if st.session_state.runde and st.session_state.variante:
         cnt_variante_runda = 0  # Contor pentru afișarea directă în chenar
 
         for v in variante_seturi:
-            # INTERSECȚIE ULTRA-RAPIDĂ DE SETURI
-            if len(v["set"] & rset) >= minim:
+            # INTERSECȚIE ULTRA-RAPIDĂ DE SETURI -> Aflăm numărul FIX de potriviri
+            hituri = len(v["set"] & rset)
+            
+            # Verificăm dacă se încadrează într-o categorie de câștig real (minim 2, maxim 7)
+            if hituri >= 2:
                 cnt_variante_runda += 1
-                castiguri_totale.append({"id": v["id"], "numere": v["numere"]})
+                
+                # Incrementăm doar categoria exactă în care a picat (fără să le mai umfle pe cele inferioare)
+                if hituri in statistica_reala:
+                    statistica_reala[hituri] += 1
+                
+                # Salvăm în lista totală cu mențiunea categoriei curate
+                castiguri_totale.append({"id": f"{v['id']} ({hituri}/7)", "numere": v["numere"]})
 
                 if not castig_runda:
-                    castiguri_unice.append({"id": v["id"], "numere": v["numere"]})
+                    castiguri_unice.append({"id": f"{v['id']} ({hituri}/7)", "numere": v["numere"]})
                     castig_runda = True
         
         # Salvăm linia text exact așa cum apare în chenar pentru funcția de download solicitată
-        linii_chenar.append(f"Runda {i} - {cnt_variante_runda} variante câștigătoare")
+        linii_chenar.append(f"Runda {i} - {cnt_variante_runda} variante câștigătoare în total")
         
         if not castig_runda:
             runde_fara_hit.append(runda)
+
+    # ==============================
+    # AFIȘARE STATISTICĂ DETALIATĂ PE CATEGORII REALE
+    # ==============================
+    st.subheader("📊 Distribuția Reală a Câștigurilor (La Fix)")
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("Doar 2/7 Reali", statistica_reala[2])
+    c2.metric("Doar 3/7 Reali", statistica_reala[3])
+    c3.metric("Doar 4/7 Reali", statistica_reala[4])
+    c4.metric("Doar 5/7 Reali", statistica_reala[5])
+    c5.metric("Doar 6/7 Reali", statistica_reala[6])
+    c6.metric("Doar 7/7 Reali", statistica_reala[7])
+    st.write("")
 
     # ==============================
     # AFIȘARE PE RUNDE (CHENAR) + BUTON DOWNLOAD CHENAR
@@ -147,7 +164,6 @@ if st.session_state.runde and st.session_state.variante:
     with col_chenar_titlu:
         st.subheader("📋 Situație per Rundă")
     with col_chenar_btn:
-        # COMANDA NOUĂ DE DOWNLOAD PENTRU TEXTUL DIN CHENAR (rundeWIN)
         st.download_button(
             "📥 Download rundeWIN",
             "\n".join(linii_chenar),
@@ -187,7 +203,7 @@ if st.session_state.runde and st.session_state.variante:
         key="dl_variante"
     )
 
-    col_s3.metric("Câștiguri", len(castiguri_totale))
+    col_s3.metric("Total Win-uri", len(castiguri_totale))
     col_s3.download_button(
         "⬇️ Download",
         "\n".join(
